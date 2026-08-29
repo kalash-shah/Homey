@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0c10">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Homey - Smart Appliance HomeVault</title>
+  
+  <link rel="manifest" href="/manifest.json">
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="apple-touch-icon" href="/icons/icon-192.png">
+</head>
+<body class="dark-theme">
+  <!-- Audio for real-time alert sound effects -->
+  <audio id="alert-sound" preload="auto">
+    <source src="data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU"+Array(200).join("AP//AP8A") type="audio/wav">
+  </audio>
+
+  <!-- Sidebar Overlay -->
+  <div class="drawer-overlay" id="drawerOverlay"></div>
+
+  <!-- Sidebar Navigation Drawer -->
+  <aside class="sidebar-drawer" id="sidebarDrawer" aria-label="Sidebar Navigation">
+    <div class="sidebar-header">
+      <div class="brand-logo-container">
+        <div class="brand-icon">
+          <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div class="brand-texts">
+          <span class="drawer-brand-name">Homey</span>
+          <span class="drawer-subtitle">Vault & Reminder System</span>
+        </div>
+      </div>
+      <button class="icon-btn close-drawer-btn" id="closeDrawerBtn" aria-label="Close Sidebar">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" stroke-width="2" fill="none">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Quick Mini Vault Stats in Sidebar -->
+    <div class="sidebar-quick-stats">
+      <div class="stat-mini">
+        <span class="stat-mini-val" id="drawerTotalCount">0</span>
+        <span class="stat-mini-lbl">Appliances</span>
+      </div>
+      <div class="stat-mini">
+        <span class="stat-mini-val text-warning" id="drawerAlertCount">0</span>
+        <span class="stat-mini-lbl">Alerts Due</span>
+      </div>
+      <div class="stat-mini">
+        <span class="stat-mini-val text-cyan" id="drawerVaultVal">$0</span>
+        <span class="stat-mini-lbl">Valuation</span>
+      </div>
+    </div>
+
+    <!-- Sidebar Menu Items -->
+    <nav class="sidebar-nav">
+      <ul class="nav-list">
+        <li>
+          <button class="nav-item active" data-tab="vault">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+              <line x1="12" y1="17" x2="12" y2="21"></line>
+            </svg>
+            <span>View Current Appliances</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item" data-tab="add">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <line x1="12" y1="8" x2="12" y2="16"></line>
+              <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
+            <span>Add Appliance</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item" data-tab="alerts">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            <span>Real-time Reminders</span>
+            <span class="badge badge-pulse" id="drawerAlertBadge">0</span>
+          </button>
+        </li>
+        <li>
+          <button class="nav-item" data-tab="profile">
+            <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Profile & Settings</span>
+          </button>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Sidebar Footer / Phone Connection Banner -->
+    <div class="sidebar-footer">
+      <button class="btn-phone-connect" id="openPhoneModalBtn">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect>
+          <line x1="12" y1="18" x2="12.01" y2="18"></line>
+        </svg>
+        <span>Test on Your Phone</span>
+      </button>
+      <div class="app-version">Homey v2.4 • Hackathon Edition</div>
+    </div>
+  </aside>
+
+  <!-- Main Mobile App Shell -->
+  <div class="app-container">
+    <!-- Top Sticky Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="icon-btn menu-toggle" id="menuToggleBtn" aria-label="Open Sidebar Menu">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+        <div class="header-title-container">
+          <h1 class="header-title">Homey</h1>
+          <span class="header-tagline">Vault</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <!-- Live Alert Center Bell with pulsating badge -->
+        <button class="icon-btn bell-btn" id="headerBellBtn" aria-label="Notifications & Alerts">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="bell-badge hidden" id="headerBellBadge">0</span>
+        </button>
+
+        <!-- Quick Add Shortcut -->
+        <button class="icon-btn primary-add-btn" id="headerAddBtn" title="Add Appliance" aria-label="Add Appliance">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Screen Content Area -->
+    <main class="main-content" id="mainContent">
+
+      <!-- =============================================================== -->
+      <!-- VIEW 1: VIEW CURRENT APPLIANCES (VAULT) -->
+      <!-- =============================================================== -->
+      <section class="view-panel active" id="view-vault">
+        
+        <!-- Live Reminder Alert Banner (Appears if any service or warranty is due) -->
+        <div class="live-alert-banner hidden" id="liveAlertBanner">
+          <div class="alert-banner-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+          <div class="alert-banner-text" id="liveAlertText">
+            <strong>Maintenance Alert:</strong> 2 appliances need attention!
+          </div>
+          <button class="alert-banner-action" id="bannerActionBtn">Review</button>
+        </div>
+
+        <!-- Metric Stat Cards -->
+        <div class="stats-grid">
+          <div class="stat-card" data-filter="all">
+            <div class="stat-icon-wrapper cyan">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+                <line x1="8" y1="21" x2="16" y2="21"></line>
+                <line x1="12" y1="17" x2="12" y2="21"></line>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-number" id="statTotalAppliances">0</span>
+              <span class="stat-label">Total in Vault</span>
+            </div>
+          </div>
+
+          <div class="stat-card" data-filter="service_due">
+            <div class="stat-icon-wrapper amber">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-number text-amber" id="statServiceDue">0</span>
+              <span class="stat-label">Service Due</span>
+            </div>
+          </div>
+
+          <div class="stat-card" data-filter="expiring">
+            <div class="stat-icon-wrapper rose">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-number text-rose" id="statExpiringWarranties">0</span>
+              <span class="stat-label">Warranty Expiry</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Search Bar and Quick Actions -->
+        <div class="search-filter-section">
+          <div class="search-box">
+            <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"></circle>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+            </svg>
+            <input type="text" id="searchInput" placeholder="Search appliances, room, brand..." autocomplete="off">
+            <button class="clear-search-btn hidden" id="clearSearchBtn">&times;</button>
+          </div>
+        </div>
+
+        <!-- Category Scroll Chips -->
+        <div class="category-chips-scroll" id="categoryChips">
+          <button class="chip active" data-category="All">All</button>
+          <button class="chip" data-category="Air Conditioner">❄️ AC</button>
+          <button class="chip" data-category="Refrigerator">🧊 Fridge</button>
+          <button class="chip" data-category="Washing Machine">🫧 Laundry</button>
+          <button class="chip" data-category="Microwave">⚡ Kitchen</button>
+          <button class="chip" data-category="Television">📺 TV & Audio</button>
+          <button class="chip" data-category="Water Purifier">💧 Water</button>
+          <button class="chip" data-category="Geyser">🔥 Geyser</button>
+        </div>
+
+        <!-- Filter Tabs (All, Expiring Soon, Service Due) -->
+        <div class="filter-tabs">
+          <button class="filter-tab active" data-status="all">All Items</button>
+          <button class="filter-tab" data-status="service_due">🔧 Service Due</button>
+          <button class="filter-tab" data-status="expiring">🛡️ Warranty Expiring</button>
+        </div>
+
+        <!-- Appliances Cards List Grid -->
+        <div class="appliances-grid" id="appliancesGrid">
+          <!-- Dynamic Appliance Cards injected via JS -->
+          <div class="loading-spinner-container">
+            <div class="spinner"></div>
+            <p>Loading your HomeVault...</p>
+          </div>
+        </div>
+
+        <!-- Empty State Container -->
+        <div class="empty-state hidden" id="emptyState">
+          <div class="empty-icon">📦</div>
+          <h3 class="empty-title">No Appliances Found</h3>
+          <p class="empty-desc">Your vault is ready. Add your appliances, bills, and warranty cards to start receiving reminders.</p>
+          <button class="btn btn-primary" id="emptyAddBtn">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add First Appliance
+          </button>
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- VIEW 2: ADD / EDIT APPLIANCE -->
+      <!-- =============================================================== -->
+      <section class="view-panel" id="view-add">
+        <div class="section-title-bar">
+          <h2 class="section-title" id="formHeaderTitle">Add to HomeVault</h2>
+          <p class="section-subtitle">Store appliance photos, warranty card, bill details, and service cycle</p>
+        </div>
+
+        <form id="applianceForm" class="form-container" novalidate>
+          <input type="hidden" id="editApplianceId" value="">
+
+          <!-- Section 1: Appliance Identity -->
+          <div class="form-group-card">
+            <div class="card-header-label">
+              <span class="step-badge">1</span>
+              <h3>Appliance Identity</h3>
+            </div>
+
+            <div class="form-field">
+              <label for="appName">Appliance Name <span class="required">*</span></label>
+              <input type="text" id="appName" placeholder="e.g. Master Bedroom Inverter AC" required>
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="appCategory">Category <span class="required">*</span></label>
+                <select id="appCategory" required>
+                  <option value="Air Conditioner">Air Conditioner</option>
+                  <option value="Refrigerator">Refrigerator</option>
+                  <option value="Washing Machine">Washing Machine</option>
+                  <option value="Microwave">Microwave Oven</option>
+                  <option value="Television">Television / Home Theater</option>
+                  <option value="Water Purifier">Water Purifier (RO)</option>
+                  <option value="Geyser">Water Heater / Geyser</option>
+                  <option value="Vacuum Cleaner">Vacuum Cleaner</option>
+                  <option value="Chimney">Kitchen Chimney</option>
+                  <option value="Other">Other Home Appliance</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="appRoom">Room / Location</label>
+                <input type="text" id="appRoom" placeholder="e.g. Living Room, Kitchen" list="roomSuggestions">
+                <datalist id="roomSuggestions">
+                  <option value="Living Room">
+                  <option value="Master Bedroom">
+                  <option value="Kitchen">
+                  <option value="Utility Room">
+                  <option value="Guest Bedroom">
+                  <option value="Balcony">
+                </datalist>
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="appBrand">Brand / Manufacturer</label>
+                <input type="text" id="appBrand" placeholder="e.g. Daikin, Samsung, LG, Bosch">
+              </div>
+              <div class="form-field">
+                <label for="appModel">Model Number</label>
+                <input type="text" id="appModel" placeholder="e.g. FTKM50TV">
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="appSerial">Serial Number</label>
+              <input type="text" id="appSerial" placeholder="e.g. SN-892348123 (from back label)">
+            </div>
+          </div>
+
+          <!-- Section 2: Photo Uploads (Appliance, Warranty, Bill) -->
+          <div class="form-group-card">
+            <div class="card-header-label">
+              <span class="step-badge">2</span>
+              <h3>Vault Attachments & Photos</h3>
+            </div>
+            <p class="form-help-text">Snap directly with phone camera or upload from files</p>
+
+            <div class="photo-upload-grid">
+              <!-- Appliance Main Photo -->
+              <div class="upload-box" id="appliancePhotoBox">
+                <input type="file" id="appPhotoInput" accept="image/*" capture="environment" class="file-input-hidden">
+                <div class="upload-preview hidden" id="appPhotoPreview">
+                  <img src="" alt="Appliance Preview" id="appPhotoImg">
+                  <button type="button" class="remove-photo-btn" data-target="appPhoto">&times;</button>
+                </div>
+                <div class="upload-prompt" id="appPhotoPrompt">
+                  <div class="upload-icon">📷</div>
+                  <span class="upload-title">Appliance Photo</span>
+                  <span class="upload-hint">Camera / Gallery</span>
+                </div>
+              </div>
+
+              <!-- Warranty Card Photo -->
+              <div class="upload-box" id="warrantyPhotoBox">
+                <input type="file" id="warrantyPhotoInput" accept="image/*" capture="environment" class="file-input-hidden">
+                <div class="upload-preview hidden" id="warrantyPhotoPreview">
+                  <img src="" alt="Warranty Card Preview" id="warrantyPhotoImg">
+                  <button type="button" class="remove-photo-btn" data-target="warrantyPhoto">&times;</button>
+                </div>
+                <div class="upload-prompt" id="warrantyPhotoPrompt">
+                  <div class="upload-icon">🛡️</div>
+                  <span class="upload-title">Warranty Card</span>
+                  <span class="upload-hint">Card / Document</span>
+                </div>
+              </div>
+
+              <!-- Bill / Invoice Photo -->
+              <div class="upload-box" id="billPhotoBox">
+                <input type="file" id="billPhotoInput" accept="image/*" capture="environment" class="file-input-hidden">
+                <div class="upload-preview hidden" id="billPhotoPreview">
+                  <img src="" alt="Bill Receipt Preview" id="billPhotoImg">
+                  <button type="button" class="remove-photo-btn" data-target="billPhoto">&times;</button>
+                </div>
+                <div class="upload-prompt" id="billPhotoPrompt">
+                  <div class="upload-icon">🧾</div>
+                  <span class="upload-title">Bill / Receipt</span>
+                  <span class="upload-hint">Tax Invoice</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 3: Bill & Purchase Details -->
+          <div class="form-group-card">
+            <div class="card-header-label">
+              <span class="step-badge">3</span>
+              <h3>Purchase & Bill Details</h3>
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="appPurchaseDate">Purchase Date <span class="required">*</span></label>
+                <input type="date" id="appPurchaseDate" required>
+              </div>
+
+              <div class="form-field">
+                <label for="appBillAmount">Bill Amount ($ / ₹)</label>
+                <input type="number" id="appBillAmount" step="0.01" placeholder="0.00">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="appBillVendor">Purchased From (Store / Online)</label>
+                <input type="text" id="appBillVendor" placeholder="e.g. Best Buy, Amazon, Croma">
+              </div>
+
+              <div class="form-field">
+                <label for="appBillNumber">Invoice / Bill Number</label>
+                <input type="text" id="appBillNumber" placeholder="e.g. INV-2026-9081">
+              </div>
+            </div>
+          </div>
+
+          <!-- Section 4: Warranty Card Details & Expiration Alert -->
+          <div class="form-group-card">
+            <div class="card-header-label">
+              <span class="step-badge">4</span>
+              <h3>Warranty Details</h3>
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="appWarrantyDuration">Warranty Period (Months)</label>
+                <select id="appWarrantyDuration">
+                  <option value="6">6 Months</option>
+                  <option value="12" selected>1 Year (12 Months)</option>
+                  <option value="24">2 Years (24 Months)</option>
+                  <option value="36">3 Years (36 Months)</option>
+                  <option value="60">5 Years (60 Months)</option>
+                  <option value="120">10 Years (Compressor/Motor)</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="appWarrantyEndDate">Warranty End Date <span class="required">*</span></label>
+                <input type="date" id="appWarrantyEndDate" required>
+              </div>
+            </div>
+            <div class="auto-calc-note" id="warrantyCalcNote">💡 Warranty end date auto-calculated from purchase date</div>
+          </div>
+
+          <!-- Section 5: Service Duration & Maintenance Reminders -->
+          <div class="form-group-card">
+            <div class="card-header-label">
+              <span class="step-badge">5</span>
+              <h3>Service Duration & Real-time Alerts</h3>
+            </div>
+
+            <div class="form-row">
+              <div class="form-field">
+                <label for="appServiceDuration">Service Interval</label>
+                <select id="appServiceDuration">
+                  <option value="1">Every 1 Month</option>
+                  <option value="3">Every 3 Months (Quarterly)</option>
+                  <option value="6" selected>Every 6 Months (Bi-annual)</option>
+                  <option value="12">Every 1 Year (Annual)</option>
+                  <option value="24">Every 2 Years</option>
+                </select>
+              </div>
+
+              <div class="form-field">
+                <label for="appLastServiceDate">Last Service Date</label>
+                <input type="date" id="appLastServiceDate">
+              </div>
+            </div>
+
+            <div class="form-field">
+              <label for="appNextServiceDate">Next Scheduled Service Date</label>
+              <input type="date" id="appNextServiceDate">
+            </div>
+            <div class="auto-calc-note">⏰ Real-time notifications will alert you before this date</div>
+          </div>
+
+          <!-- Section 6: Additional Notes -->
+          <div class="form-group-card">
+            <div class="card-header-label">
+              <span class="step-badge">6</span>
+              <h3>Care Notes & Technician Contacts</h3>
+            </div>
+            <div class="form-field">
+              <textarea id="appNotes" rows="3" placeholder="e.g. Authorized service center contact +1-800-555-0199, replace filter every 6 months..."></textarea>
+            </div>
+          </div>
+
+          <!-- Submit Buttons -->
+          <div class="form-actions-sticky">
+            <button type="button" class="btn btn-secondary" id="cancelFormBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveApplianceBtn">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                <polyline points="7 3 7 8 15 8"></polyline>
+              </svg>
+              <span>Save to HomeVault</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- VIEW 3: REAL-TIME REMINDERS & ALERTS -->
+      <!-- =============================================================== -->
+      <section class="view-panel" id="view-alerts">
+        <div class="section-title-bar">
+          <h2 class="section-title">Real-time Reminders</h2>
+          <p class="section-subtitle">Automated alerts for appliance servicing and warranty expiration</p>
+        </div>
+
+        <!-- Push Notification Permission Card -->
+        <div class="permission-card" id="pushPermissionCard">
+          <div class="permission-icon">🔔</div>
+          <div class="permission-info">
+            <h4>Live Device Notifications</h4>
+            <p>Allow browser notifications on your phone to receive real-time servicing alerts.</p>
+          </div>
+          <button class="btn btn-sm btn-cyan" id="enablePushBtn">Enable Alerts</button>
+        </div>
+
+        <!-- Filter tabs for alerts -->
+        <div class="filter-tabs">
+          <button class="alert-tab active" data-alert-filter="all">All Alerts (<span id="allAlertCount">0</span>)</button>
+          <button class="alert-tab" data-alert-filter="danger">🚨 Urgent / Overdue (<span id="urgentAlertCount">0</span>)</button>
+          <button class="alert-tab" data-alert-filter="warning">⚠️ Due Soon (<span id="dueSoonAlertCount">0</span>)</button>
+        </div>
+
+        <!-- Alerts List -->
+        <div class="alerts-list" id="alertsListContainer">
+          <!-- Injected dynamically -->
+        </div>
+      </section>
+
+      <!-- =============================================================== -->
+      <!-- VIEW 4: PROFILE & SETTINGS -->
+      <!-- =============================================================== -->
+      <section class="view-panel" id="view-profile">
+        <div class="section-title-bar">
+          <h2 class="section-title">Profile & Preferences</h2>
+          <p class="section-subtitle">Manage notification rules, currency, and vault backups</p>
+        </div>
+
+        <!-- User Identity Card -->
+        <div class="profile-card">
+          <div class="profile-avatar">
+            <span>HM</span>
+          </div>
+          <div class="profile-meta">
+            <h3 class="profile-name" id="profileDisplayName">Homey Member</h3>
+            <p class="profile-email" id="profileDisplayEmail">vault.master@homey.app</p>
+            <span class="badge badge-success">Vault Status: Secured 🛡️</span>
+          </div>
+        </div>
+
+        <!-- Valuation Breakdown Card -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>📊 HomeVault Financial Summary</h3>
+          </div>
+          <div class="summary-stat-rows">
+            <div class="summary-row">
+              <span>Total Appliances Stored:</span>
+              <strong id="summaryTotalCount">0</strong>
+            </div>
+            <div class="summary-row">
+              <span>Total Assets Valuation:</span>
+              <strong class="text-cyan" id="summaryTotalValuation">$0.00</strong>
+            </div>
+            <div class="summary-row">
+              <span>Total Maintenance Spent:</span>
+              <strong class="text-amber" id="summaryTotalServiceSpent">$0.00</strong>
+            </div>
+            <div class="summary-row">
+              <span>Active Warranties:</span>
+              <strong class="text-success" id="summaryActiveWarranties">0</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Notification Rules -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>🔔 Alert & Reminder Settings</h3>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <label for="settingWarrantyDays">Warranty Expiry Alert Threshold</label>
+              <span class="setting-desc">Trigger notification when warranty is ending within:</span>
+            </div>
+            <select id="settingWarrantyDays" class="setting-select">
+              <option value="7">7 Days before</option>
+              <option value="15" selected>15 Days before</option>
+              <option value="30">30 Days before</option>
+              <option value="60">60 Days before</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <label for="settingServiceDays">Service Due Alert Threshold</label>
+              <span class="setting-desc">Trigger reminder when servicing is scheduled within:</span>
+            </div>
+            <select id="settingServiceDays" class="setting-select">
+              <option value="3">3 Days before</option>
+              <option value="7" selected>7 Days before</option>
+              <option value="14">14 Days before</option>
+            </select>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <label>Alert Sound Effects</label>
+              <span class="setting-desc">Play chime when urgent alerts are detected</span>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="settingSoundToggle" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="setting-item">
+            <div class="setting-text">
+              <label>Test Real-time Reminder</label>
+              <span class="setting-desc">Verify browser push notification on your device</span>
+            </div>
+            <button class="btn btn-sm btn-outline" id="testNotificationBtn">Trigger Test Alert</button>
+          </div>
+        </div>
+
+        <!-- Backup, Restore & Demo Data -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h3>💾 Data Backup & Vault Management</h3>
+          </div>
+          <div class="settings-actions-group">
+            <button class="btn btn-secondary w-100" id="exportDataBtn">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+              Export Vault (Backup JSON)
+            </button>
+
+            <label class="btn btn-secondary w-100 btn-file-label">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              Import Vault Backup
+              <input type="file" id="importFileInput" accept=".json" class="hidden">
+            </label>
+          </div>
+        </div>
+
+        <!-- Testing on Phone Info Card -->
+        <div class="settings-card highlight-card">
+          <div class="settings-card-header">
+            <h3>📱 Test Homey on Your Mobile Phone</h3>
+          </div>
+          <p>Scan the QR code or open your local network IP on your mobile browser. You can tap <strong>"Add to Home Screen"</strong> to run Homey as a native mobile app!</p>
+          <button class="btn btn-cyan w-100" id="openPhoneModalBtn2">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2"></rect>
+              <line x1="12" y1="18" x2="12.01" y2="18"></line>
+            </svg>
+            Show Mobile Connect Link & QR
+          </button>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Mobile Navigation Bar for One-Hand Phone Usability -->
+    <nav class="bottom-nav-bar">
+      <button class="bottom-nav-item active" data-tab="vault">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        <span>Vault</span>
+      </button>
+
+      <button class="bottom-nav-item" data-tab="add">
+        <div class="fab-center">
+          <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+        <span>Add</span>
+      </button>
+
+      <button class="bottom-nav-item" data-tab="alerts">
+        <div class="bottom-icon-wrap">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="nav-badge hidden" id="bottomNavAlertBadge">0</span>
+        </div>
+        <span>Alerts</span>
+      </button>
+
+      <button class="bottom-nav-item" data-tab="profile">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>Profile</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- =================================================================== -->
+  <!-- MODALS & DIALOGS -->
+  <!-- =================================================================== -->
+
+  <!-- 1. APPLIANCE DETAIL MODAL (VAULT ITEM SHEET) -->
+  <div class="modal-backdrop" id="detailModal">
+    <div class="modal-sheet">
+      <div class="modal-sheet-handle"></div>
+      <div class="modal-header">
+        <div class="modal-title-group">
+          <span class="modal-category-badge" id="modalCategory">Category</span>
+          <h2 class="modal-title" id="modalTitle">Appliance Details</h2>
+        </div>
+        <button class="icon-btn modal-close-btn" id="closeDetailModalBtn">&times;</button>
+      </div>
+
+      <div class="modal-body" id="modalDetailBody">
+        <!-- Photo Gallery Tabs -->
+        <div class="photo-viewer-container">
+          <div class="photo-tabs">
+            <button class="photo-tab-btn active" data-target-photo="appliance">📷 Appliance</button>
+            <button class="photo-tab-btn" data-target-photo="warranty">🛡️ Warranty Card</button>
+            <button class="photo-tab-btn" data-target-photo="bill">🧾 Purchase Bill</button>
+          </div>
+          <div class="photo-display-frame" id="photoDisplayFrame">
+            <img src="" alt="Vault Document" id="modalActiveImg" class="photo-display-img">
+            <div class="photo-zoom-hint" id="photoZoomHint">🔍 Tap to enlarge document</div>
+          </div>
+        </div>
+
+        <!-- Status Countdown Indicators -->
+        <div class="detail-status-grid">
+          <div class="detail-status-box" id="detailWarrantyBox">
+            <div class="status-box-header">
+              <span>🛡️ Warranty Status</span>
+              <span class="badge" id="modalWarrantyBadge">Active</span>
+            </div>
+            <div class="status-box-date" id="modalWarrantyDate">Expires: 2027-08-15</div>
+            <div class="status-progress-bar">
+              <div class="progress-fill" id="modalWarrantyProgress"></div>
+            </div>
+          </div>
+
+          <div class="detail-status-box" id="detailServiceBox">
+            <div class="status-box-header">
+              <span>🔧 Service Schedule</span>
+              <span class="badge" id="modalServiceBadge">Due in 5d</span>
+            </div>
+            <div class="status-box-date" id="modalNextServiceDate">Next: 2026-09-03</div>
+            <div class="status-progress-bar">
+              <div class="progress-fill" id="modalServiceProgress"></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Specifications & Bill Info Grid -->
+        <div class="detail-info-card">
+          <h4 class="detail-card-heading">Appliance Specifications</h4>
+          <div class="info-grid">
+            <div class="info-cell">
+              <span class="info-label">Brand</span>
+              <span class="info-value" id="modalBrand">--</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Model Number</span>
+              <span class="info-value" id="modalModel">--</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Room / Area</span>
+              <span class="info-value" id="modalRoom">--</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Serial Number</span>
+              <span class="info-value" id="modalSerial">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Purchase & Invoice Details -->
+        <div class="detail-info-card">
+          <h4 class="detail-card-heading">Invoice & Financials</h4>
+          <div class="info-grid">
+            <div class="info-cell">
+              <span class="info-label">Purchase Date</span>
+              <span class="info-value" id="modalPurchaseDate">--</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Bill Amount</span>
+              <span class="info-value text-cyan" id="modalBillAmount">--</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Vendor Store</span>
+              <span class="info-value" id="modalVendor">--</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Invoice Number</span>
+              <span class="info-value" id="modalBillNumber">--</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Service History Timeline -->
+        <div class="detail-info-card">
+          <div class="card-header-with-btn">
+            <h4 class="detail-card-heading">Service History & Maintenance</h4>
+            <button class="btn btn-sm btn-cyan" id="openLogServiceModalBtn">
+              + Log Service
+            </button>
+          </div>
+          <div class="service-timeline" id="modalServiceTimeline">
+            <div class="timeline-empty">No maintenance records logged yet.</div>
+          </div>
+        </div>
+
+        <!-- Notes Card -->
+        <div class="detail-info-card">
+          <h4 class="detail-card-heading">Care Notes & Instructions</h4>
+          <p class="detail-notes-text" id="modalNotes">No notes added.</p>
+        </div>
+      </div>
+
+      <!-- Modal Bottom Actions -->
+      <div class="modal-footer-actions">
+        <button class="btn btn-danger-outline" id="modalDeleteBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="3 6 5 6 21 6"></polyline>
+            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+          </svg>
+          Delete
+        </button>
+        <button class="btn btn-secondary" id="modalEditBtn">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+          </svg>
+          Edit
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. LOG SERVICE MODAL -->
+  <div class="modal-backdrop" id="logServiceModal">
+    <div class="modal-sheet modal-sm">
+      <div class="modal-sheet-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">Log Appliance Service</h3>
+        <button class="icon-btn" id="closeLogServiceBtn">&times;</button>
+      </div>
+      <form id="logServiceForm" class="form-container">
+        <div class="form-field">
+          <label for="svcDate">Service Date <span class="required">*</span></label>
+          <input type="date" id="svcDate" required>
+        </div>
+        <div class="form-field">
+          <label for="svcType">Service Type</label>
+          <input type="text" id="svcType" placeholder="e.g. Filter Cleaning, Gas Refill, Routine Check" required value="Routine Maintenance">
+        </div>
+        <div class="form-row">
+          <div class="form-field">
+            <label for="svcCost">Service Cost ($ / ₹)</label>
+            <input type="number" id="svcCost" step="0.01" placeholder="0.00">
+          </div>
+          <div class="form-field">
+            <label for="svcTech">Technician / Agency</label>
+            <input type="text" id="svcTech" placeholder="e.g. Daikin Care">
+          </div>
+        </div>
+        <div class="form-field">
+          <label for="svcNotes">Service Notes</label>
+          <textarea id="svcNotes" rows="2" placeholder="Replaced inner air filter and tested cooling efficiency."></textarea>
+        </div>
+        <div class="form-actions-row">
+          <button type="button" class="btn btn-secondary" id="cancelLogServiceBtn">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save & Reschedule</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 3. FULLSCREEN IMAGE LIGHTBOX -->
+  <div class="lightbox-modal" id="imageLightbox">
+    <div class="lightbox-toolbar">
+      <span class="lightbox-title" id="lightboxTitle">Document Viewer</span>
+      <button class="lightbox-close-btn" id="closeLightboxBtn">&times;</button>
+    </div>
+    <div class="lightbox-image-wrap">
+      <img src="" alt="Document Full View" id="lightboxImg">
+    </div>
+  </div>
+
+  <!-- 4. TEST ON PHONE MODAL (QR Code & IP) -->
+  <div class="modal-backdrop" id="phoneModal">
+    <div class="modal-sheet modal-sm">
+      <div class="modal-sheet-handle"></div>
+      <div class="modal-header">
+        <h3 class="modal-title">📱 Open Homey on Your Phone</h3>
+        <button class="icon-btn" id="closePhoneModalBtn">&times;</button>
+      </div>
+      <div class="modal-body text-center">
+        <p class="phone-modal-desc">Connect your phone to the same Wi-Fi network and open the URL below or scan the QR code:</p>
+        
+        <!-- Live Generated QR Code Container -->
+        <div class="qr-code-box" id="qrCodeContainer">
+          <canvas id="qrCanvas" width="180" height="180"></canvas>
+        </div>
+
+        <div class="phone-url-chip" id="phoneUrlChip">
+          <span id="phoneUrlText">http://localhost:8080</span>
+          <button class="copy-url-btn" id="copyUrlBtn" title="Copy URL">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+          </button>
+        </div>
+
+        <div class="pwa-steps">
+          <div class="pwa-step">
+            <span class="step-num">1</span>
+            <span>Open browser on your phone</span>
+          </div>
+          <div class="pwa-step">
+            <span class="step-num">2</span>
+            <span>Tap browser menu (⋮ or Share)</span>
+          </div>
+          <div class="pwa-step">
+            <span class="step-num">3</span>
+            <span>Tap <strong>"Add to Home Screen"</strong></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification Container -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- Scripts -->
+  <script src="/js/notifications.js"></script>
+  <script src="/js/app.js"></script>
+</body>
+</html>

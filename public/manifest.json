@@ -1,0 +1,22 @@
+{
+  "name": "Homey - Smart HomeVault",
+  "short_name": "Homey",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0c10",
+  "theme_color": "#0a0c10",
+  "orientation": "portrait-primary",
+  "description": "Secure HomeVault for home appliance photos, bills, warranty tracking, and real-time maintenance reminders.",
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

@@ -32,3 +32,15 @@ google-services.json
 
 # Android Profiling
 *.hprof
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.db
+*.sqlite3
+
+# OS generated
+.DS_Store
+Thumbs.db
+
