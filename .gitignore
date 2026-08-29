@@ -44,3 +44,16 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# Secrets & Environment Variables
+.env
+.env.*
+*.pem
+*.key
+
+# Node / Build Outputs
+node_modules/
+dist/
+
+# User Uploads
+uploads/*
+!uploads/.gitkeep
